@@ -2,224 +2,389 @@
 @using Newtonsoft.Json.Linq
 @using Newtonsoft.Json
 @using System.Text.RegularExpressions
+@using System.IO
+@using Data 
 
 <h2>Mailing: Encuesta de Satisfacción</h2>
 
-@if (msjPost)
-{
-    <div class="alert alert-success" role="alert">
-        @mensajePost
-    </div>
-}
+@*@if (msjPost)
+    {*@
+<div class="alert alert-success" role="alert">
+    @mensajePost
+</div>
+@* } *@
 
-@if (clientes.Count > 0)
-{
-    <table class="table">
-        <thead>
+@*@if (clientes.Count > 0)
+    {*@
+<table class="table">
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Email</th>
+            <th>Nombre</th>
+            <th>Fecha</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var cliente in clientes)
+        {
             <tr>
-                <th>Código</th>
-                <th>Email</th>
-                <th>Nombre</th>
-                <th>Fecha</th>
+                <td>@cliente.codigo.ToString()</td>
+                <td>@cliente.email</td>
+                <td>@cliente.name</td>
+                <td>@cliente.fecha</td>
+
             </tr>
-        </thead>
-        <tbody>
-            @foreach (var cliente in clientes)
-            {
-                <tr>
-                    <td>@cliente.codigo.ToString()</td>
-                    <td>@cliente.email</td>
-                    <td>@cliente.name</td>
-                    <td>@cliente.fecha</td>
-
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+        }
+    </tbody>
+</table>
+@* } *@
 
 
-    @code
+@code
 {
 
-            bool msjPost = false;
-            string mensajePost = "";
-        private static HttpClient _httpClient = new HttpClient();
+    bool msjPost = false;
+    string mensajePost = "";
+    private static HttpClient _httpClient = new HttpClient();
 
-        List<Cliente> clientes = new List<Cliente>();
+    List<Cliente> clientes = new List<Cliente>();
+    List<Bono> bonos = new List<Bono>();
 
-        //protected override Task OnInitializedAsync()
-        //{
-        //    StartTimer();
-        //    return base.OnInitializedAsync();
-        //}
 
-        protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
+    {
+        FileStream fsOverwrite = new FileStream(@"C:\\jireh\\bonos.txt", FileMode.Append);
+        using (StreamWriter sw = new StreamWriter(fsOverwrite))
         {
-            await base.OnInitializedAsync();
-            await StartTimer();
+            sw.WriteLine(DateTime.Now.ToString());
         }
 
+        EnviarEncuesta();
+        EnviarBono();
+
+    }
 
 
-        async Task StartTimer()
+
+
+    public class Cliente
+    {
+        public int codigo { get; set; }
+        public int empresa { get; set; }
+        public int sucursal { get; set; }
+        public string fecha { get; set; }
+        public string email { get; set; }
+        public string name { get; set; }
+        public string username { get; set; }
+        public string password { get; set; }
+        public string brand { get; set; }
+        public string reply_to { get; set; }
+        public string campaign_id { get; set; }
+        public string estado { get; set; }
+        public string detalle { get; set; }
+    }
+
+    void EnviarBono()
+    {
+        msjPost = false;
+
+        //string urlCli = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/clienteEncuesta";
+
+        string urlBono = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/enviarBono";
+        string ljson = @"{
+            nombre : 'Roberto
+            '}";
+
+        FileStream fsOverwrite = new FileStream(@"C:\\jireh\\bonos.txt", FileMode.Append);
+        using (StreamWriter sw = new StreamWriter(fsOverwrite))
         {
-            bool stop = true;
-            while (stop)
+            sw.WriteLine(urlBono + " " + ljson + " " + DateTime.Now.ToString());
+        }
+
+        JObject o = JObject.Parse(ljson);
+
+        ProcesarBonos(o, urlBono);
+
+    }
+
+    public void ProcesarBonos(object json, string url)
+    {
+        using (var content = new StringContent(JsonConvert.SerializeObject(json), System.Text.Encoding.UTF8, "application/json"))
+        {
+            HttpResponseMessage result = _httpClient.PostAsync(url, content).Result;
+            //if (result.StatusCode == System.Net.HttpStatusCode.Created)
+
+            if (result.IsSuccessStatusCode)
             {
-                await Task.Delay(20000);
-                if (stop)
+
+
+                string jsonString = result.Content.ReadAsStringAsync()
+                .Result
+                .Replace("\\", "")
+                .Trim(new char[1] { '"' });
+
+                FileStream fsOverwrite = new FileStream(@"C:\\jireh\\bonos.txt", FileMode.Append);
+                using (StreamWriter sw = new StreamWriter(fsOverwrite))
                 {
-                    ClienteNuevo();
-                    StateHasChanged();
+                    sw.WriteLine(result.StatusCode + " " + jsonString);
                 }
-            }
-        }
 
-        public class Cliente
-        {
-            public int codigo { get; set; }
-            public int empresa { get; set; }
-            public int sucursal { get; set; }
-            public string fecha { get; set; }
-            public string email { get; set; }
-            public string name { get; set; }
-            public string username { get; set; }
-            public string password { get; set; }
-            public string brand { get; set; }
-            public string reply_to { get; set; }
-            public string campaign_id { get; set; }
-            public string estado { get; set; }
-            public string detalle { get; set; }
-        }
+                //List<Cliente> objCliente = JsonConvert.DeserializeObject<List<Cliente>>(jsonString);
 
-        void ClienteNuevo()
-        {
-            msjPost = false;
+                //Bono objBono = new Bono();
 
-            string urlCli = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/clienteEncuesta";
-            string ljson = @"{
-                nombre : 'Roberto'
-                }";
+                List<Bono> objBono = JsonConvert.DeserializeObject<List<Bono>>(jsonString);
 
-            JObject o = JObject.Parse(ljson);
-            POSTDataCli(o, urlCli);
-        }
-
-        public void POSTDataCli(object json, string url)
-        {
-            using (var content = new StringContent(JsonConvert.SerializeObject(json), System.Text.Encoding.UTF8, "application/json"))
-            {
-                HttpResponseMessage result = _httpClient.PostAsync(url, content).Result;
-                //if (result.StatusCode == System.Net.HttpStatusCode.Created)
-
-                if (result.IsSuccessStatusCode)
-                {
-                    string jsonString = result.Content.ReadAsStringAsync()
-                    .Result
-                    .Replace("\\", "")
-                    .Trim(new char[1] { '"' });
-
-                    List<Cliente> objCliente = JsonConvert.DeserializeObject<List<Cliente>>(jsonString);
-
-                    if (objCliente.Count == 0)
-                    {
-                        msjPost = true;
-                        DateTime now = DateTime.Now;
-                        clientes.Clear();
-                        mensajePost = "No hay datos que enviar!  " + now.ToString();
-                    }
-                    else
-                    {
-                        foreach (Cliente liClie in objCliente)
-                        {
-                            string lemail = liClie.email;
-                            string lname = liClie.name;
-                            if (RevisaEmail(lemail))
-                            {
-                                string lactjson = @"{
-                            username: 'royaltex','password': 'r05alT73x2020','brand':'LEE JEANS', 'reply_to':'servicioalcliente@royaltex.com.ec', 'campaign_id': '540','email': '" + lemail + "','name': '" + lname +
-                                 "'}";
-
-                                JObject ljson = JObject.Parse(lactjson);
-
-                                string urlCli = "https://www.nodeanalytics.net/api/v1/mailing.php";
-
-                                POSTDataActClienteNew(ljson, urlCli, liClie);
-                            }
-
-                            clientes = objCliente;
-
-                        } } }
-                else
-                {
-                    mensajePost = "Ha ocurrido un problema!";
-                }
-            }
-        }
-        public void POSTDataActClienteNew(object json, string url, Cliente cli)
-        {
-            using (var content = new StringContent(JsonConvert.SerializeObject(json), System.Text.Encoding.UTF8, "application/json"))
-            {
-                HttpResponseMessage result = _httpClient.PostAsync(url, content).Result;
-                //if (result.StatusCode == System.Net.HttpStatusCode.Created)
-
-                if (result.IsSuccessStatusCode)
-                {
-                    string urlActCli = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/creaSatisfaccion";
-
-                    string creajson = @"{ empresa: " + cli.empresa + ",'sucursal':" + cli.sucursal + ",'codigo':" + cli.codigo + ",'estado':'E'}";
-
-                    JObject lcreajson = JObject.Parse(creajson);
-
-                    POSTDataActualizaCli(lcreajson, urlActCli);
-                }
-                else
-                {
-                    mensajePost = "Ha ocurrido un problema!";
-                }
-            }
-        }
-
-        public void POSTDataActualizaCli(object json, string url)
-        {
-            using (var content = new StringContent(JsonConvert.SerializeObject(json), System.Text.Encoding.UTF8, "application/json"))
-            {
-                HttpResponseMessage result = _httpClient.PostAsync(url, content).Result;
-                //if (result.StatusCode == System.Net.HttpStatusCode.Created)
-
-                if (result.IsSuccessStatusCode)
+                if (objBono.Count == 0)
                 {
                     msjPost = true;
                     DateTime now = DateTime.Now;
-                    mensajePost = "Datos Enviados con Éxito!    " + now.ToString();
+                    clientes.Clear();
+                    mensajePost = "No hay datos que enviar!  " + now.ToString();
                 }
                 else
                 {
-                    mensajePost = "Ha ocurrido un problema!";
+                    foreach (Bono liBono in objBono)
+                    {
+                        int lCodigo = liBono.codigo;
+                        string lBeneficiario = liBono.beneficiario;
+                        string lFechaVenc = liBono.fecha;
+                        string lTipo = liBono.tipo;
+                        string lCedula = liBono.cedula;
+                        string lEmail = liBono.email;
+                        Double lValor = liBono.valor;
+                        string lConcepto = liBono.concepto;
 
+                        if (RevisaEmail(lEmail))
+                        {
+                            //    string lactjson = @"{
+                            //username: 'royaltex','password': 'r05alT73x2020','brand':'LEE JEANS', 'reply_to':'servicioalcliente@royaltex.com.ec', 'campaign_id': '540','email': '" + lemail + "','name': '" + lname +
+                            //     "'}";
+
+                            string lactjson = @"{
+                        username: 'royaltex','password': 'r05alT73x2020','brand':'LEE JEANS', 'reply_to':'servicioalcliente@royaltex.com.ec', 'campaign_id': '548',
+                        'custom_fields': {
+                             'field_1': '" + lCodigo.ToString() + "'," +
+                             "'field_2':'" + lBeneficiario + "'," +
+                             "'field_3':'" + lConcepto + "'," +
+                             "'field_4':'" + lCedula + "'," +
+                             "'field_5':'" + lFechaVenc + "'," +
+                             "'field_6':" + lValor + "," +
+                             "'field_7':'" + lTipo + "'," +
+                        " }," +
+                        "'email':'" + lEmail + "'," +
+                        "'name':'" + lBeneficiario + "'," +
+                        "}";
+
+                            JObject ljson = JObject.Parse(lactjson);
+
+                            string urlBono = "https://www.nodeanalytics.net/api/v1/mailing.php";
+
+                            EnviarBonoMailing(ljson, urlBono, liBono);
+                        }
+
+                        bonos = objBono;
+
+                    }
                 }
             }
+
+        }
+    }
+
+    public void EnviarBonoMailing(object json, string url, Bono bon)
+    {
+        using (var content = new StringContent(JsonConvert.SerializeObject(json), System.Text.Encoding.UTF8, "application/json"))
+        {
+            HttpResponseMessage result = _httpClient.PostAsync(url, content).Result;
+            //if (result.StatusCode == System.Net.HttpStatusCode.Created)
+
+            if (result.IsSuccessStatusCode)
+            {
+                //string urlActBono = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/creaSatisfaccion";
+                string urlActBono = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/actEnvioBono";
+
+                bon.observacion = "RF | " + DateTime.Now.ToString();
+
+                string creajson = @"{ 'codigo':'" + bon.codigo + "','estado':'E', 'observacion':'" + bon.observacion + "'}";
+
+                JObject lcreajson = JObject.Parse(creajson);
+
+                BonoEnviado(lcreajson, urlActBono);
+            }
+            else
+            {
+                mensajePost = "Ha ocurrido un problema!";
+            }
+        }
+    }
+
+    public void BonoEnviado(object json, string url)
+    {
+        using (var content = new StringContent(JsonConvert.SerializeObject(json), System.Text.Encoding.UTF8, "application/json"))
+        {
+            HttpResponseMessage result = _httpClient.PostAsync(url, content).Result;
+            //if (result.StatusCode == System.Net.HttpStatusCode.Created)
+
+            if (result.IsSuccessStatusCode)
+            {
+                msjPost = true;
+                DateTime now = DateTime.Now;
+                mensajePost = "Datos Enviados con Éxito!    " + now.ToString();
+            }
+            else
+            {
+                mensajePost = "Ha ocurrido un problema!";
+
+            }
+        }
+    }
+
+
+    void EnviarEncuesta()
+    {
+        msjPost = false;
+
+        string urlCli = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/clienteEncuesta";
+        string ljson = @"{
+            nombre : 'Roberto
+            '}";
+
+        FileStream fsOverwrite = new FileStream(@"C:\\jireh\\encuestas.txt", FileMode.Append);
+        using (StreamWriter sw = new StreamWriter(fsOverwrite))
+        {
+            sw.WriteLine(urlCli + " " + ljson + " " + DateTime.Now.ToString());
         }
 
-        private Boolean RevisaEmail(String email)
+        JObject o = JObject.Parse(ljson);
+
+        ProcesarEncuestas(o, urlCli);
+
+    }
+
+    public void ProcesarEncuestas(object json, string url)
+    {
+        using (var content = new StringContent(JsonConvert.SerializeObject(json), System.Text.Encoding.UTF8, "application/json"))
         {
-            String expresion;
-            expresion = "\\w+([-+.']\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*";
-            if (Regex.IsMatch(email, expresion))
+            HttpResponseMessage result = _httpClient.PostAsync(url, content).Result;
+            //if (result.StatusCode == System.Net.HttpStatusCode.Created)
+
+            if (result.IsSuccessStatusCode)
             {
-                if (Regex.Replace(email, expresion, String.Empty).Length == 0)
+
+
+                string jsonString = result.Content.ReadAsStringAsync()
+                .Result
+                .Replace("\\", "")
+                .Trim(new char[1] { '"' });
+
+                FileStream fsOverwrite = new FileStream(@"C:\\jireh\\encuestas.txt", FileMode.Append);
+                using (StreamWriter sw = new StreamWriter(fsOverwrite))
                 {
-                    return true;
+                    sw.WriteLine(result.StatusCode + " " + jsonString);
+                }
+
+
+                List<Cliente> objCliente = JsonConvert.DeserializeObject<List<Cliente>>(jsonString);
+
+                if (objCliente.Count == 0)
+                {
+                    msjPost = true;
+                    DateTime now = DateTime.Now;
+                    clientes.Clear();
+                    mensajePost = "No hay datos que enviar!  " + now.ToString();
                 }
                 else
                 {
-                    return false;
+                    foreach (Cliente liClie in objCliente)
+                    {
+                        string lemail = liClie.email;
+                        string lname = liClie.name;
+                        if (RevisaEmail(lemail))
+                        {
+                            string lactjson = @"{
+                        username: 'royaltex','password': 'r05alT73x2020','brand':'LEE JEANS', 'reply_to':'servicioalcliente@royaltex.com.ec', 'campaign_id': '540','email': '" + lemail + "','name': '" + lname +
+                             "'}";
+
+                            JObject ljson = JObject.Parse(lactjson);
+
+                            string urlCli = "https://www.nodeanalytics.net/api/v1/mailing.php";
+
+                            EnviarEncuestaMailing(ljson, urlCli, liClie);
+                        }
+
+                        clientes = objCliente;
+
+                    }
                 }
+            }
+
+        }
+    }
+    public void EnviarEncuestaMailing(object json, string url, Cliente cli)
+    {
+        using (var content = new StringContent(JsonConvert.SerializeObject(json), System.Text.Encoding.UTF8, "application/json"))
+        {
+            HttpResponseMessage result = _httpClient.PostAsync(url, content).Result;
+            //if (result.StatusCode == System.Net.HttpStatusCode.Created)
+
+            if (result.IsSuccessStatusCode)
+            {
+                string urlActCli = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/creaSatisfaccion";
+
+                string creajson = @"{ empresa: " + cli.empresa + ",'sucursal':" + cli.sucursal + ",'codigo':" + cli.codigo + ",'estado':'E'}";
+
+                JObject lcreajson = JObject.Parse(creajson);
+
+                EncuestaEnviada(lcreajson, urlActCli);
+            }
+            else
+            {
+                mensajePost = "Ha ocurrido un problema!";
+            }
+        }
+    }
+
+    public void EncuestaEnviada(object json, string url)
+    {
+        using (var content = new StringContent(JsonConvert.SerializeObject(json), System.Text.Encoding.UTF8, "application/json"))
+        {
+            HttpResponseMessage result = _httpClient.PostAsync(url, content).Result;
+            //if (result.StatusCode == System.Net.HttpStatusCode.Created)
+
+            if (result.IsSuccessStatusCode)
+            {
+                msjPost = true;
+                DateTime now = DateTime.Now;
+                mensajePost = "Datos Enviados con Éxito!    " + now.ToString();
+            }
+            else
+            {
+                mensajePost = "Ha ocurrido un problema!";
+
+            }
+        }
+    }
+
+    private Boolean RevisaEmail(String email)
+    {
+        String expresion;
+        expresion = "\\w+([-+.']\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*";
+        if (Regex.IsMatch(email, expresion))
+        {
+            if (Regex.Replace(email, expresion, String.Empty).Length == 0)
+            {
+                return true;
             }
             else
             {
                 return false;
             }
         }
+        else
+        {
+            return false;
+        }
     }
+}
