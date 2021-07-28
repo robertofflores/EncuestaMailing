@@ -47,6 +47,7 @@
     bool msjPost = false;
     string mensajePost = "";
     private static HttpClient _httpClient = new HttpClient();
+    string UrlBase = "http://192.168.2.123:8080/";
 
     List<Cliente> clientes = new List<Cliente>();
     List<Bono> bonos = new List<Bono>();
@@ -89,9 +90,10 @@
     {
         msjPost = false;
 
-        //string urlCli = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/clienteEncuesta";
+        //string urlCli = UrlBase +"ApiRest/services/JavaMobil/clienteEncuesta";
 
-        string urlBono = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/enviarBono";
+        //string urlBono = UrlBase +"ApiRest/services/JavaMobil/enviarBono";
+        string urlBono = UrlBase +"ApiRest/services/JavaMobil/enviarBono";
         string ljson = @"{
             nombre : 'Roberto
             '}";
@@ -202,8 +204,8 @@
 
             if (result.IsSuccessStatusCode)
             {
-                //string urlActBono = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/creaSatisfaccion";
-                string urlActBono = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/actEnvioBono";
+                //string urlActBono = UrlBase +"ApiRest/services/JavaMobil/creaSatisfaccion";
+                string urlActBono = UrlBase +"ApiRest/services/JavaMobil/actEnvioBono";
 
                 bon.observacion = "RF | " + DateTime.Now.ToString();
 
@@ -246,7 +248,7 @@
     {
         msjPost = false;
 
-        string urlCli = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/clienteEncuesta";
+        string urlCli = UrlBase +"ApiRest/services/JavaMobil/clienteEncuesta";
         string ljson = @"{
             nombre : 'Roberto
             '}";
@@ -331,7 +333,7 @@
 
             if (result.IsSuccessStatusCode)
             {
-                string urlActCli = "http://200.7.208.131:8080/ApiRest/services/JavaMobil/creaSatisfaccion";
+                string urlActCli = UrlBase +"ApiRest/services/JavaMobil/creaSatisfaccion";
 
                 string creajson = @"{ empresa: " + cli.empresa + ",'sucursal':" + cli.sucursal + ",'codigo':" + cli.codigo + ",'estado':'E'}";
 
