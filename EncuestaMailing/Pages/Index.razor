@@ -7,15 +7,11 @@
 
 <h2>Mailing: Encuesta de Satisfacción</h2>
 
-@*@if (msjPost)
-    {*@
+
 <div class="alert alert-success" role="alert">
     @mensajePost
 </div>
-@* } *@
 
-@*@if (clientes.Count > 0)
-    {*@
 <table class="table">
     <thead>
         <tr>
@@ -38,13 +34,13 @@
         }
     </tbody>
 </table>
-@* } *@
+
 
 
 @code
 {
 
-    bool msjPost = false;
+   boolean msjPost = False;
     string mensajePost = "";
     private static HttpClient _httpClient = new HttpClient();
     string UrlBase = "http://192.168.2.123:8080/";
@@ -132,10 +128,7 @@
                     sw.WriteLine(result.StatusCode + " " + jsonString);
                 }
 
-                //List<Cliente> objCliente = JsonConvert.DeserializeObject<List<Cliente>>(jsonString);
-
-                //Bono objBono = new Bono();
-
+              
                 List<Bono> objBono = JsonConvert.DeserializeObject<List<Bono>>(jsonString);
 
                 if (objBono.Count == 0)
